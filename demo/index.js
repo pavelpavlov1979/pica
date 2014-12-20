@@ -42,6 +42,31 @@ function updateOrig() {
   ctx.drawImage(img, 0, 0);
 }
 
+function sleep(milliseconds) {
+  var start = new Date().getTime();
+  for (var i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
+}
+
+
+var updateBoxblur= _.debounce(function(){
+  var dst, ctx, width, start, time;
+  start = performance.now();
+  window.pica.testBlur("dst-pica");
+  //sleep(110);
+  time = (performance.now() - start).toFixed(2);
+  $('#dst-cvs-info').text(_.template('<%= time %>ms, <%= w %> x <%= h %>', {
+    time: time,
+    w: 0,
+    h: 0
+  }));
+
+},100);
+
+
 var updateResized = _.debounce(function () {
   var dst, ctx, width, start, time;
 
@@ -103,6 +128,8 @@ var img = new Image();
 var quality = Number($('#pica-quality').val());
 var unsharpAmount = Number($('#pica-unsharp-amount').val());
 var unsharpThreshold = Number($('#pica-unsharp-threshold').val());
+var unsharpBoxblur = Number($('#pica-boxblur').val());
+
 
 img.src = imageEncoded;
 
@@ -129,6 +156,11 @@ $('#pica-unsharp-threshold').on('change', function () {
   updateResized();
 });
 
+$('#pica-boxblur').on('change', function () {
+  unsharpBoxblur = Number($('#pica-boxblur').val());
+  updateBoxblur();
+
+});
 
 $('#upload-btn, #src').on('click', function () {
   $('#upload').trigger('click');

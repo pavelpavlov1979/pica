@@ -136,8 +136,142 @@ function resizeCanvas(from, to, options, callback) {
 }
 
 
-exports.resizeBuffer = resizeBuffer;
-exports.resizeCanvas = resizeCanvas;
+  /*
+   BoxBlur
+   */
+  var H, L, S, R, G, B;
+  var HLSMAX = 240;
+  var RGBMAX = 255;
+  var UNDEFINED = (HLSMAX*2)/3>>0;
+
+  function RGBtoHLS(r, g, b){
+    r /= 255, g /= 255, b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h, s, l = (max + min) / 2;
+
+    if(max == min){
+      h = s = 0; // achromatic
+    }else{
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch(max){
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    H=h;
+    S=s;
+    L=l;
+  }
+
+  function HLStoRGB(h, l, s){
+    function hue2rgb(p, q, t){
+      if(t < 0) t += 1;
+      if(t > 1) t -= 1;
+      if(t < 1/6) return p + (q - p) * 6 * t;
+      if(t < 1/2) return q;
+      if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    }
+    var r, g, b;
+
+    if(s == 0){
+      r = g = b = l;
+    }else{
+
+      var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      var p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    R=r * 255;
+    G=g * 255;
+    B=b * 255;
+  }
+
+  function boxBlur(id){
+    var canvas  = document.getElementById( id );
+    var context = canvas.getContext("2d");
+    var imageData;
+    var img = document.getElementById( id );
+    var w = canvas.width;
+    var h = canvas.height;
+
+    try {
+      try {
+        imageData = context.getImageData( 0, 0, w, h);
+      } catch(e) {
+
+        // NOTE: this part is supposedly only needed if you want to work with local files
+        // so it might be okay to remove the whole try/catch block and just use
+        // imageData = context.getImageData( top_x, top_y, width, height );
+        try {
+          netscape.security.PrivilegeManager.enablePrivilege("UniversalBrowserRead");
+          imageData = context.getImageData( top_x, top_y, width, height );
+        } catch(e) {
+          alert("Cannot access local image");
+          throw new Error("unable to access local image data: " + e);
+          return;
+        }
+      }
+    } catch(e) {
+      alert("Cannot access image");
+      throw new Error("unable to access image data: " + e);
+      return;
+    }
+    var i= 0, index= 0, current=0;
+    var arr=new Array();
+    var tempArr = new Array();
+    var max=0;
+    var s = '';
+    var x = Number.MAX_SAFE_INTEGER;
+    //while (i<12){
+    while (i<imageData.data.length){
+      if (index<3){
+        tempArr[index]=imageData.data[i];
+        current++;
+        index++;
+      }else {
+        index=0;
+        RGBtoHLS(tempArr[0],tempArr[1],tempArr[2]);
+        arr[current-3]=H;
+        if (s=='') s= H.toString();
+        else{
+          if (s.length< H.toString().length) s= H.toString();
+        }
+        arr[current-2]=S;
+        if (s.length< S.toString().length) s= S.toString();
+        arr[current-1]=L;
+        if (s.length< L.toString().length) s= L.toString();
+        //arr[current-3]=tempArr[0];
+        //arr[current-2]=tempArr[1];
+        //arr[current-1]=tempArr[2];
+      }
+      //index++;
+      i++;
+    }
+    max = s.length;
+    var k = Math.pow(10, s.length);
+    var res = parseFloat(s);
+    res= res*k;
+    var test=1;
+  }
+
+  function testBlur(id){
+    boxBlur(id);
+    //R=25; G=205; B=2;
+    //RGBtoHLS(R,G,B);
+    //alert(H+'\n'+ S+'\n'+L);
+    //HLStoRGB(H,L,S);
+    //alert(R+'\n'+ G+'\n'+B);
+  }
+  exports.resizeBuffer = resizeBuffer;
+  exports.resizeCanvas = resizeCanvas;
+  exports.testBlur = testBlur;
 exports.WW = WORKER;
 
 },{"./lib/resize":4,"./lib/resize_worker":5,"webworkify":6}],1:[function(require,module,exports){
